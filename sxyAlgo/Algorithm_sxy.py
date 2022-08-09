@@ -1,7 +1,7 @@
 
 
 import numpy as np
-from cluster import Cluster 
+from sxyAlgo.cluster import Cluster 
 #from arima.predict import arimas
 from time import time 
 from pyDOE import lhs
@@ -50,9 +50,9 @@ class Algorithm_sxy(Algorithm):
         print("算法开始执行 计算 cost_min    消耗了 %.2f s, cost_min = %.3f " % (time()-s,cost_min))
         s = time()
         over,under = self.findOverAndUnder(cluster,b,y,0)
-        #self.writeCompare("over_t=0:",over,"runthis_over.txt")
+        
         print("算法开始执行 计算over & under 消耗了 %.2f s, length of over = %d  length of under = %d " % (time()-s,len(over),len(under))) 
-        #cluster.allVmCsPluMs
+        
         CPU_t,MEM_t=None,None
         
         candidate_copy = {}
@@ -194,6 +194,7 @@ class Algorithm_sxy(Algorithm):
         
         #max_under = np.max(under)
         for s in over:
+            
             nodethis = nodes[s]
             containers = nodethis.containers
             mig_candi_s = np.array([ x  for x in containers.keys() ])# 能被迁走的VM候选集
@@ -216,13 +217,15 @@ class Algorithm_sxy(Algorithm):
             
             # 对每个迁移VM贪心选择最优迁入机器
             for m in mig:
+                
                 destination = s # 目标机器初始化为原本所在的机器
                 m = int(m)
                 
                 # TODO debug mig cpu mem
-                #print("debug in bal_d_cpu " ,CPU_t[under])
+                print("debug in bal_d_cpu " ,CPU_t,MEM_t,CPU_t[under])
+                print(f"over = {over}, mig = {mig} under = {under}")
                 #print((t,m,s,max_under,len(CPU_t),len(cpu_t),max_mig,min_mig))
-                
+                print(t,m,s,len(CPU_t),len(cpu_t))
                 bal_d_cpu = cpu_t[m] * (CPU_t[s] - cpu_t[m] - CPU_t[under]) # 该VM资源量*（原机器上除该VM之外的资源总量-目标机器上原本的资源总量）
                 bal_d_mem = mem_t[m] * (MEM_t[s] - mem_t[m] - MEM_t[under])
 

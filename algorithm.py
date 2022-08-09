@@ -4,8 +4,8 @@ import time
 from sandpiper import Sandpiper_algo
 from abc import ABC,abstractmethod
 from sxyAlgo.Algorithm_sxy import Algorithm_sxy
-
-
+from utl import CostOfLoadBalance,CostOfMigration
+import csv
 class Algorithm(ABC):
     @abstractmethod
     def __call__(self, *args):
@@ -13,6 +13,8 @@ class Algorithm(ABC):
 
 class Scheduler():
     def __init__(self) -> None:
+        self.sxy_algo = Algorithm_sxy()
+        self.Filename = None
         pass
     def __call__(self,nodes,cpudict,memdict,algo,cluster=None,t=None):
         #nodes,cpudict,memdict = self.nodes,self.cpudict,self.memdict
@@ -23,13 +25,30 @@ class Scheduler():
             self.x_t0 = np.zeros([podnum,nodenum]) #初始化矩阵
             self.cpu_t0, self.mem_t0 = np.zeros(podnum),np.zeros(podnum) #初始化 cpu和mem
             self.getMatrix(nodes,cpudict,memdict)
-            placement = Sandpiper_algo(self.x_t0, self.cpu_t0, self.mem_t0,100,100)
+            placement = Sandpiper_algo(self.x_t0, self.cpu_t0, self.mem_t0,CPU_MAX=30,MEM_MAX=30)
+            eval_bal = CostOfLoadBalance(self.cpu_t0,self.mem_t0 , placement,b=0.0025)
+            eval_mig = CostOfMigration(self.x_t0, placement,self.mem_t0)
+            value = eval_bal+(podnum-1)*eval_mig*0.004
         elif algo == "sxy":
             #TODO sxy algorithm
-            value,eval_bal,eval_mig = Algorithm_sxy(cluster,t)
+            print("sxy")
+            value,eval_bal,eval_mig = self.sxy_algo(cluster,t)
         #print(f"placement = {placement}")
+        if self.Filename == None:
+            self.Filename = './metric/sandpiper.csv' if algo == "sandpiper" else './metric/sxy.csv'
+        with open( self.Filename,'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([value,eval_bal,eval_mig])
+        if algo == "sxy":
+            return self.sxyDict(cluster)
         return self.MatrixToDict(placement,nodenum)
-   
+    def sxyDict(self,cluster):
+        nodes = cluster.nodes
+        newnodes = {}
+        nodename_prefix = "k8s-node"
+        for nodeNum,v in nodes.items():
+            newnodes[nodename_prefix+str(nodeNum+1)] = set(["tc"+str(e) for e in v.containers.keys() ])
+        return newnodes
     def MatrixToDict(self,placement,nodenum):
         """将placement pod -> node 关系转换为 map； nodename:{tc0,tc1,...}
 
@@ -68,7 +87,7 @@ class Scheduler():
         cpu_t0, mem_t0 = self.cpu_t0, self.mem_t0
         for podenameCpu,podenameMem in zip(cpudict.keys(),memdict.keys()):
             cpu_t0[int(podenameCpu[2:])] = cpudict[podenameCpu][-1]
-            mem_t0[int(podenameMem[2:])] = cpudict[podenameMem][-1]
+            mem_t0[int(podenameMem[2:])] = memdict[podenameMem][-1]
     # def Sandpiper(self,x_t0, cpu_t0, mem_t0,CPU_MAX, MEM_MAX):
     #     # 计算当前各PM和VM的Vol值及VSR值
     #     CPU_t0 = ResourceUsage(cpu_t0, x_t0)

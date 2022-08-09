@@ -72,7 +72,7 @@ def isAllUnderLoad(x_t, cpu_t, mem_t, CPU_MAX, MEM_MAX):
     """
     CPU_t = ResourceUsage(cpu_t, x_t)
     MEM_t = ResourceUsage(mem_t, x_t)
-   
+    print("---- test sandpiper ----",CPU_t,MEM_t)
     is_cpu = (CPU_t < CPU_MAX).all()
     is_mem = (MEM_t < MEM_MAX).all()
     is_all = is_cpu and is_mem # 所以资源都不过载才返回True

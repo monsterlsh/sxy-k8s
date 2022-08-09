@@ -6,8 +6,8 @@ from io import StringIO, BytesIO
 from algorithm import Scheduler
 from time import sleep,time
 from sys import exit
-
-
+import csv
+from operator import eq
 class ScheduleSys:
     def __init__(self,nodeNum,podNum,algo) -> None:
         self.cpudict = {} #podname:cpulist
@@ -19,6 +19,7 @@ class ScheduleSys:
         self.nodes = {} #所有nodename：set(podname)
         self.pods = set() #所有podname
         self.startTime = time()
+        
         pass
     
     def schedule(self):
@@ -31,26 +32,41 @@ class ScheduleSys:
         #os.system("bash ./request.sh")
         flag = self.checkNodeAndPodCmd()
         while flag:
-            print(f"######## {t}th loading ################")
+            print(f"################################# {t}th loading #############################")
             for i in range(podnum):
                 podname = "tc"+str(i)
-                self.getCpuMemNow(podname)
+                self.getCpuMemNow(podname,t)
             
             self.NodeToPod(t,self.algoName)
             #print(f"pods is {self.pods}\nfirst nodes= \n{self.nodes}")
             #主要现在这个sandpiper函数里的一些细节 日志文件在run8s。log
+            if t==0:
+                Filename = './metric/sandpiper.csv' if algo == "sandpiper" else './metric/sxy.csv'
+                with open( Filename,'w') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["value","eval_bal","eval_mig"])
             if self.algoName == "sandpiper":
                 newnodes = self.algorithm(self.nodes,self.cpudict,self.memdict,self.algoName) #调度算法后生成新的node pod分配方案
             elif self.algoName == "sxy":
+                # if t>20:
+                #     newnodes = self.algorithm(self.nodes,self.cpudict,self.memdict,self.algoName,self.cluster,t)
+                # else:
+                #     newnodes = self.nodes
                 newnodes = self.algorithm(self.nodes,self.cpudict,self.memdict,self.algoName,self.cluster,t)
+            else:
+                print("请选择调度算法 --algo=sandpiper or --algo=sxy\n结束")
+                exit()
             #判断有无迁移
-            from operator import eq
             if  self.nodes == newnodes or eq(self.nodes,newnodes):
+                
                 sleep(5)
+                flag = self.checkNodeAndPodCmd()
                 t=t+1
+                # if t>5:
+                #     break;
                 continue
             self.nodes = newnodes
-            print(f"afte schedule nodes= \n {self.nodes}")
+            print(f"after schedule nodes= \n {self.nodes}")
             
             assert len(self.nodes)==self.nodeNum and len(self.pods) == self.podNum
             self.modifyYaml() #迁移
@@ -72,7 +88,8 @@ class ScheduleSys:
             sleep(5)
             t=t+1
 
-            if t>10:
+            if t>5:
+                print(f"at {t} Done")
                 break
     
     def NodeToPod(self,t,algoName):
@@ -81,6 +98,8 @@ class ScheduleSys:
         """
         if t == 0 and algoName == "sxy":
             isSxy  = True
+        else:
+            isSxy = False
         if isSxy:
             # TODO clusster node container
             from sxyAlgo.cluster import Cluster
@@ -100,7 +119,7 @@ class ScheduleSys:
             if nodename not in self.nodes:
                 nodes[nodename]=set()
                 if isSxy:
-                    node_id = int(nodename[-1:])
+                    node_id = int(nodename[-1:])-1
                     node_config = {"nodeName":nodename,"id":node_id,"cpu_capacity":100,"mem_capacity":100}
                     node = Node(node_config)
                     cluster.nodes[node.id] = node
@@ -127,7 +146,7 @@ class ScheduleSys:
             
         
 
-    def getCpuMemNow(self,podname):
+    def getCpuMemNow(self,podname,t=0):
         """获取当前时刻的资源信息"""
         cpudict  = self.cpudict
         memdict = self.memdict
@@ -169,6 +188,9 @@ class ScheduleSys:
         # 计算比例
         cpuperc = intcpu / 20 # 即/2000*100
         memperc = intmem / 2400 # 即/240000*100
+        if t == 0 :
+            self.cpudict[podname] = [0.05, 0.1, 0.1, 0.05, 0.05, 0.05, 0.1, 0.1, 0.05]
+            self.memdict[podname] = [0.1, 0.05, 0.05, 0.1, 0.05, 0.05, 0.1, 0.1, 0.05]
         self.cpudict[podname].append(cpuperc)
         self.memdict[podname].append(memperc)
         # print(intcpu)
@@ -176,6 +198,7 @@ class ScheduleSys:
     # 驱逐pod-修改yaml文件-重建pod
     def modifyYaml(self):
         #migrated_pod_list = self.pods # 需要迁移的pod
+        print("migration start")
         nodes = self.nodes
         p =1
         for node_name,migrated_pod_list in nodes.items():

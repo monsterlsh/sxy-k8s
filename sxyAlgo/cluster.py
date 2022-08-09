@@ -4,8 +4,8 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
-from node import Node
-from container import container
+from sxyAlgo.node import Node
+from sxyAlgo.container import Container
 
 
 
@@ -41,7 +41,7 @@ class Cluster(object):
     def configure_containers(self, container_configs: dict):
         
         for container_config in container_configs.values():
-            inc = container(container_config)
+            inc = Container(container_config)
             self.containers[inc.id] = inc
             
             node_id = inc.mac_id

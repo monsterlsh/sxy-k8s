@@ -4,14 +4,14 @@ import this
 from pyrsistent import v
 
 #from prometheus_client import container_ip_grouping_key
-from container import Container
+from sxyAlgo.container import Container
 import numpy as np
 
 class Node(object):
     def __init__(self, node_config):
         self.id = node_config["id"]
         self.cpu_capacity = node_config["cpu_capacity"]
-        self.mem_capacity = node_config["memory_capacity"]
+        self.mem_capacity = node_config["mem_capacity"]
         self.isMigration = False
         self.cluster = None
         self.containers_bak = None
@@ -52,7 +52,7 @@ class Node(object):
         container.attach(self)
     
     def getEveryTimeCpuList(self,clock,w):
-       
+        
         nextclock = clock+1
         containers = self.containers
         self.len = len(containers)

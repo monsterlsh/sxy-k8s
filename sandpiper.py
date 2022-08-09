@@ -21,6 +21,7 @@ def Sandpiper_algo(x_t0, cpu_t0, mem_t0,CPU_MAX, MEM_MAX):
     """
     f = isAllUnderLoad(x_t0, cpu_t0, mem_t0, CPU_MAX, MEM_MAX)
     if f :
+        print("no schedule")
         return x_t0
     # 计算当前各PM和VM的Vol值及VSR值
     CPU_t0 = ResourceUsage(cpu_t0, x_t0)
@@ -106,12 +107,3 @@ def Sandpiper_algo(x_t0, cpu_t0, mem_t0,CPU_MAX, MEM_MAX):
     
     
     return placement
-
-
-
-
-
-
-
-
-
