@@ -9,11 +9,12 @@ from sys import exit
 import csv
 from operator import eq
 class ScheduleSys:
-    def __init__(self,nodeNum,podNum,algo) -> None:
+    def __init__(self,algo) -> None:
         self.cpudict = {} #podname:cpulist
         self.memdict = {} #podname:memlist
-        self.nodeNum = nodeNum
-        self.podNum = podNum
+        # self.nodeNum = nodeNum
+        # self.podNum = podNum
+        self.getPodNodNum()
         self.algorithm = Scheduler()
         self.algoName = algo
         self.nodes = {} #所有nodename：set(podname)
@@ -29,6 +30,7 @@ class ScheduleSys:
         """
         t = 0
         podnum = self.podNum
+        
         #os.system("bash ./request.sh")
         flag = self.checkNodeAndPodCmd()
         while flag:
@@ -37,8 +39,9 @@ class ScheduleSys:
                 podname = "tc"+str(i)
                 self.getCpuMemNow(podname,t)
             
-            self.NodeToPod(t,self.algoName)
-            #print(f"pods is {self.pods}\nfirst nodes= \n{self.nodes}")
+            self.NodeToPod(t)
+            # print(f"pods is {self.pods}\nfirst nodes= \n{self.nodes}")
+            # assert 1==0
             #主要现在这个sandpiper函数里的一些细节 日志文件在run8s。log
             if t==0:
                 Filename = './metric/sandpiper.csv' if algo == "sandpiper" else './metric/sxy.csv'
@@ -53,6 +56,8 @@ class ScheduleSys:
                 # else:
                 #     newnodes = self.nodes
                 newnodes = self.algorithm(self.nodes,self.cpudict,self.memdict,self.algoName,self.cluster,t)
+            elif self.algoName == "drl":
+                pass
             else:
                 print("请选择调度算法 --algo=sandpiper or --algo=sxy\n结束")
                 exit()
@@ -85,17 +90,18 @@ class ScheduleSys:
             # 实际测试
             
             """
-            sleep(5)
+            sleep(60)
             t=t+1
 
             if t>5:
                 print(f"at {t} Done")
                 break
     
-    def NodeToPod(self,t,algoName):
+    def NodeToPod(self,t):
         """第一时刻初始化 node和pod的对应关系
             问题：如果 将pods nodes作为返回传入self.pods，self.nodes，会出现部分pod无法分配到node里
         """
+        algoName = self.algoName
         if t == 0 and algoName == "sxy":
             isSxy  = True
         else:
@@ -110,11 +116,11 @@ class ScheduleSys:
         pods = self.pods
         nodes = self.nodes
         for podname in self.cpudict.keys():
-            with os.popen("kubectl get pod -o wide|grep "+podname+ " | awk '{print $9}'") as p :
+            with os.popen("kubectl get pod -o wide|grep '"+podname+ " ' | awk '{print $9}'") as p :
                 pods.add(podname)
                 nodename = p.read()[0:-1] #k8s-node1 k8s-node2这样的 自定义的
             if nodename == "<none>":
-                with os.popen("kubectl get pod -o wide|grep "+podname+ " | awk '{print $7}'") as p :
+                with os.popen("kubectl get pod -o wide|grep '"+podname+ " ' | awk '{print $7}'") as p :
                     nodename = p.read()[0:-1]
             if nodename not in self.nodes:
                 nodes[nodename]=set()
@@ -162,13 +168,13 @@ class ScheduleSys:
             sleep(3)
             looptimes += 1
             if looptimes > 5:
-                with os.popen("kubectl top pod | grep "+podname) as p:
+                with os.popen("kubectl top pod | grep '"+podname+" '") as p:
                     print("wrong",p.read())
                 exit(1)
-            with os.popen("kubectl top pod | grep "+podname+" | awk '{print $2}' | tr -cd '[0-9]'") as cmdcpu :
+            with os.popen("kubectl top pod | grep '"+podname+" ' | awk '{print $2}' | tr -cd '[0-9]'") as cmdcpu :
                 
                 cpu = cmdcpu.read()
-            with os.popen("kubectl top pod | grep "+podname+" | awk '{print $3}' | tr -cd '[0-9]'") as cmdmem :
+            with os.popen("kubectl top pod | grep '"+podname+" ' | awk '{print $3}' | tr -cd '[0-9]'") as cmdmem :
                 
                 mem = cmdmem.read()
         print(f"podname={podname} cpu: {cpu} mem:{mem}")
@@ -187,8 +193,8 @@ class ScheduleSys:
             
         # 计算比例
         cpuperc = intcpu / 20 # 即/2000*100
-        memperc = intmem / 2400 # 即/240000*100
-        if t == 0 :
+        memperc = intmem / 4096 * 100 # 即/(4*1024)*100
+        if t == 0 and self.algoName == "sxy":
             self.cpudict[podname] = [0.05, 0.1, 0.1, 0.05, 0.05, 0.05, 0.1, 0.1, 0.05]
             self.memdict[podname] = [0.1, 0.05, 0.05, 0.1, 0.05, 0.05, 0.1, 0.1, 0.05]
         self.cpudict[podname].append(cpuperc)
@@ -238,6 +244,16 @@ class ScheduleSys:
         print(f"\nat time {time()-self.startTime}: \n{cmd.read()} \n")
         print(self.cpudict)
         return True
+    def getPodNodNum(self):
+        with os.popen("kubectl get pod -o wide") as po:
+            res = po.read()
+            lines = res.split("\n")
+        self.podNum  = len(lines)-2
+        with os.popen("kubectl get node -o wide") as po:
+            res = po.read()
+            lines = res.split("\n")
+        self.nodeNum = len(lines)-3
+        
 
 if __name__ =="__main__":
     import argparse
@@ -245,6 +261,6 @@ if __name__ =="__main__":
     parse.add_argument("--algo",type=str)
     args = parse.parse_args()
     algo = args.algo
-    test = ScheduleSys(2,4,algo)
+    test = ScheduleSys(algo)
     test.schedule()
     

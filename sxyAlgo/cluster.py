@@ -66,7 +66,8 @@ class Cluster(object):
             #pmCost[pm.id]=v
             #pm.CsPluMs #w个时刻 pm vm两两相乘的指标 vm_id:[w1,w2]
             pm_cost[pm.id] = pm.CsPluMs # [w1_sum,w2_sum] 一列
-            #TODO dubug
+            # #TODO dubug
+            # print(pm.id,pm.CsPluMs)
             try:
                 bal+=pm_cost[pm.id][0]
             except:
@@ -81,17 +82,18 @@ class Cluster(object):
             vm_mem.update(pm.memPluPredict)
             
             cost_min += v# 所有时刻的负载均衡开销之和
-      
+        
         #这里vmid编号必须是连续自然数
         vm_cpu = sorted(vm_cpu.items(),key=lambda x:x[0])
         vm_mem = sorted(vm_mem.items(),key=lambda x:x[0])
     
         self.vm_cpu = np.array([v for k,v in vm_cpu])
         self.vm_mem = np.array([v for k,v in vm_mem])
-        #print(len(vm_cpu),len(self.containers),len(vm_cpu))
-        assert len(self.vm_cpu) == len(self.containers)
+        # print("debug",len(vm_cpu),len(self.containers),len(vm_cpu))
+        # assert len(self.vm_cpu) == len(self.containers)
         self.pm_cost = pm_cost
-        
+        # print("debug cost",self.pm_cost)
+        # assert 1==0
         self.pm_cost_copy = {k:v for k,v in pm_cost.items() }
         self.cpusum_copy = {k:v for k,v in cpusum .items()}
         self.memsum_copy = {k:v for k,v in memsum .items()}

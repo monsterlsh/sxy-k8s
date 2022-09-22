@@ -5,6 +5,7 @@ import pmdarima as pm
 class Container(object):
     def __init__(self,container_config):
         self.id = container_config["id"]
+        self.name = container_config["containerName"]
         self.mac_id = container_config["node_id"]
         self.cpu = container_config["cpu"]
         self.mem = container_config["mem"]
@@ -19,6 +20,7 @@ class Container(object):
     
     def attach(self, node):
         self.node = node
+        self.mac_id = node.id
     
     def predict(self,clock,w,flag=False):
         if flag:

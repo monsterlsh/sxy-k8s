@@ -31,10 +31,10 @@ class Algorithm_sxy(Algorithm):
         min_z ,eval_bal,eval_mig,value = self.SchedulePolicy( params["z"], params["k"], params["w"], params["v"], 
                                                              params["M"],params["a"],params["b"],params["y"],now)
         
-        sxytime = time()
-        sxybal = self.CostOfnodeLoadBalanceSimplify(0,params["b"],params["N"],params["M"])
+        # sxytime = time()
+        # sxybal = self.CostOfnodeLoadBalanceSimplify(0,params["b"],params["N"],params["M"])
         after =  time() 
-        print("计算时间",after-sxytime,"sxy bal :",sxybal,"my bal",eval_bal)
+        # print("计算时间",after-sxytime,"sxy bal :",sxybal,"my bal",eval_bal)
         
         if min_z!=-1:
             print("at ",now,"花费了",after-start,"s metric=",min_z ,eval_bal,eval_mig,value)
@@ -46,6 +46,9 @@ class Algorithm_sxy(Algorithm):
         cluster = self.cluster
         lenx = len(cluster.containers[0].cpulist)
         s = time()
+        # TODO debug
+        # print(cluster.nodes.keys())
+        # assert 1==0
         cost_min,balfirst = cluster.cost_all_pm_first(now,W,b)
         print("算法开始执行 计算 cost_min    消耗了 %.2f s, cost_min = %.3f " % (time()-s,cost_min))
         s = time()
@@ -94,6 +97,7 @@ class Algorithm_sxy(Algorithm):
                     mig ,bal,value =migx,balx,valuex
                 if cost > cost_min:
                     break
+            print(f"find cost greedily z={z} cost={cost}")
             if cost < cost_min: # 选择总开销低于完全不迁移的开销且最小的
                 cost_min = cost
                 min_z ,balf,migf,valuef= z, bal,mig,value
@@ -146,7 +150,6 @@ class Algorithm_sxy(Algorithm):
         thresh_out = (thr_CPU ** 2 + b * thr_MEM ** 2) / 2
         #thresh_out = (avg_CPU ** 2 + b * avg_MEM ** 2) / 2
         thresh_in = (avg_CPU ** 2 + b * avg_MEM ** 2) / 2 # 判断迁入机器候选集的标准，初始化
-        
         cpu_sum = 0
         mem_sum = 0
         for i in cpumem_desc: # 对数组中的每一行，即每一个cpu-mem对
@@ -163,10 +166,19 @@ class Algorithm_sxy(Algorithm):
        
         allVmCsPluMs =cluster.pm_cost  #TODO 已经在costForMigration更新了
         #TODO debug
-        #print(allVmCsPluMs[0])
-        bal = { pmid:v[t] for pmid,v in allVmCsPluMs.items()}  # [w1_sum,w2_sum]
+        try:
+            bal = { pmid:v[t] for pmid,v in allVmCsPluMs.items()}  # [w1_sum,w2_sum]
+        except:
+            print("debug wron t = ",t)
+            for k,v in allVmCsPluMs.items():
+                print(k,v)
+            #print("debug :",len(allVmCsPluMs[0]),allVmCsPluMs[0],"\n t = ",t)
+            print("debug wrong")
+            exit()
         pmids = np.array(list(bal.keys()))
         v = np.array(list(bal.values()))
+        # print(" in Algorithm_sxy.py line 149 ------ thresh_out = ",thresh_out,"thresh_in = ",thresh_in)
+        # print(f"bal.values = {v}")
         overv = np.where(v > thresh_out)[0] # 迁出候选集
         over = pmids[overv]
         underv = np.where(v < thresh_in)[0] # 迁入候选集
@@ -222,8 +234,8 @@ class Algorithm_sxy(Algorithm):
                 m = int(m)
                 
                 # TODO debug mig cpu mem
-                print("debug in bal_d_cpu " ,CPU_t,MEM_t,CPU_t[under])
-                print(f"over = {over}, mig = {mig} under = {under}")
+                # print("debug in bal_d_cpu " ,CPU_t,MEM_t,CPU_t[under])
+                # print(f"over = {over}, mig = {mig} under = {under}")
                 #print((t,m,s,max_under,len(CPU_t),len(cpu_t),max_mig,min_mig))
                 print(t,m,s,len(CPU_t),len(cpu_t))
                 bal_d_cpu = cpu_t[m] * (CPU_t[s] - cpu_t[m] - CPU_t[under]) # 该VM资源量*（原机器上除该VM之外的资源总量-目标机器上原本的资源总量）

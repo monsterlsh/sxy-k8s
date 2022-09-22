@@ -10,6 +10,7 @@ import numpy as np
 class Node(object):
     def __init__(self, node_config):
         self.id = node_config["id"]
+        self.nodename = node_config["nodeName"]
         self.cpu_capacity = node_config["cpu_capacity"]
         self.mem_capacity = node_config["mem_capacity"]
         self.isMigration = False
@@ -110,8 +111,9 @@ class Node(object):
         # OLD #####################################
         cpu_vm = np.array([v for k, v in self.cpuPluPredict.items() ]) # 对应VM在W窗口的所有cpu
         mem_vm = np.array([v for k, v in self.memPluPredict.items() ])
-        # print("cpu_vm:",cpu_vm)
+        # print("cpu_vm:",cpu_vm,"mem",mem_vm)
         # print("vm",[v for v in self.containers.keys()])
+        # assert 1==0
         #cost_t = 0
         csplums = [0.0 for i in range(w)]
         pm_cost = 0
