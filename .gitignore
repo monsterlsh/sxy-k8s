@@ -129,6 +129,6 @@ dmypy.json
 .pyre/
 
 #log documentation
-/log
+
 /metric
 /test
